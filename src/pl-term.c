@@ -62,7 +62,11 @@ windowing!
 #include <term.h>
 #elif HAVE_NCURSES_TERM_H
 #include <ncurses/term.h>
+#else
+#define BAIL_TERM 1
 #endif
+
+#ifndef BAIL_TERM
 
 #define MAX_TERMBUF	1024		/* Conforming manual */
 #define STAT_START	0		/* must be FALSE */
@@ -396,12 +400,14 @@ void cleanupTerm(void)
 
 #endif /* TGETENT */
 
+#endif /* BAIL_TERM */
 
 		 /*******************************
 		 *      PUBLISH PREDICATES	*
 		 *******************************/
 
 BeginPredDefs(term)
+#ifndef BAIL_TERM
 #ifdef HAVE_TGETENT
   PRED_DEF("tty_get_capability", 3, tty_get_capability,	0)
   PRED_DEF("tty_goto",		 2, tty_goto,		0)
@@ -410,4 +416,7 @@ BeginPredDefs(term)
 #if HAVE_TTY_SIZE_PRED
   PRED_DEF("tty_size",		 2, tty_size,		0)
 #endif
+#endif
 EndPredDefs
+
+
