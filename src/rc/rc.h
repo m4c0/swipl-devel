@@ -71,6 +71,8 @@ typedef intptr_t ssize_t;		/* signed version of size_t */
 #include <stdio.h>
 #include <time.h>
 
+#include "rc/file.h"
+
 /* Flags for rc_open()
 */
 
