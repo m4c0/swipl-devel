@@ -4,12 +4,14 @@
 # http://stackoverflow.com/questions/26812060/cross-compile-libgcrypt-static-lib-for-use-on-ios
 
 dobuild() {
+    # EXTRAS="-g -DO_DEBUG"
+
     export CC="$(xcrun -find -sdk ${SDK} cc)"
     export CXX="$(xcrun -find -sdk ${SDK} cpp)"
     export CPP="$(xcrun -find -sdk ${SDK} cpp)"
-    export CFLAGS="${HOST_FLAGS}"
-    export CXXFLAGS="${HOST_FLAGS}"
-    export LDFLAGS="${HOST_FLAGS}"
+    export CFLAGS="${EXTRAS} ${HOST_FLAGS}"
+    export CXXFLAGS="${EXTRAS} ${HOST_FLAGS}"
+    export LDFLAGS="${EXTRAS} ${HOST_FLAGS}"
     export PLARCH="${PLARCH}"
 
     ./configure --host=${CHOST} --enable-static --disable-shared --disable-gmp --disable-mt --disable-readline --disable-largefile
