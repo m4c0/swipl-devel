@@ -871,7 +871,7 @@ PL_initialise(int argc, char **argv)
     Sfprintf(Serror,
 	     "Boot compilation has created %s\n", rcpathcopy);
 #endif
-    fail;
+    return 1;
   } else
   { IOSTREAM *statefd = SopenRC(GD->resourceDB, "$state", "$prolog", RC_RDONLY);
 
