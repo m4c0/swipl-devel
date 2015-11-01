@@ -3991,6 +3991,7 @@ PL_toplevel(void)
   return rval;
 }
 
+void rc_exit(int status);
 
 int
 PL_halt(int status)
@@ -4002,7 +4003,7 @@ PL_halt(int status)
 
   if ( cleanupProlog(status, reclaim_memory) )
   { run_on_halt(&GD->os.exit_hooks, status);
-    exit(status);
+    rc_exit(status);
   }
 
   return FALSE;
