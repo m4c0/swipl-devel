@@ -815,7 +815,8 @@ PL_initialise(int argc, char **argv)
 
     if ( !GD->resourceDB )
     { if ( !(GD->resourceDB = openResourceDB(argc, argv)) )
-      { fatalError("Could not find system resources");
+      { warning("Could not find system resources");
+        fail;
       }
       rcpath = ((RcArchive)GD->resourceDB)->path;
 
@@ -851,7 +852,7 @@ PL_initialise(int argc, char **argv)
     char *rcpathcopy = store_string(rcpath); /* rcpath is destroyed on close */
 
     if ( !compileFileList(s, argc, argv) )
-    { PL_halt(1);
+    { fail;
     }
     if ( Sclose(s) != 0 || !rc_save_archive(GD->resourceDB, NULL) )
     {
@@ -862,7 +863,7 @@ PL_initialise(int argc, char **argv)
 	       "[ERROR: Failed to save system resources %s]\n",
 	       rc_strerror(rc_errno));
 #endif
-      PL_halt(1);
+      fail;
     }
 #ifdef __WINDOWS__
     PlMessage("Boot compilation has created %s", rcpathcopy);
@@ -870,7 +871,7 @@ PL_initialise(int argc, char **argv)
     Sfprintf(Serror,
 	     "Boot compilation has created %s\n", rcpathcopy);
 #endif
-    PL_halt(0);
+    fail;
   } else
   { IOSTREAM *statefd = SopenRC(GD->resourceDB, "$state", "$prolog", RC_RDONLY);
 
@@ -883,8 +884,8 @@ PL_initialise(int argc, char **argv)
 
       Sclose(statefd);
     } else
-    { fatalError("Resource database \"%s\" does not contain a saved state",
-		 rcpath);
+    { warning("Resource database \"%s\" does not contain a saved state", rcpath);
+      fail;
     }
   }
 
