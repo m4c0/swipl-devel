@@ -434,12 +434,12 @@ attach_archive(RcArchive rca)
 {
 #if MAPPED_ARCHIVE
 #ifdef HAVE_MMAP
-  int fd;
+  ts_pl_rc_file * fd;
 
-  if ( (fd = open(rca->path, O_RDONLY)) >= 0 )
+  if ( (fd = pl_rc_file_open(rca->path, "r")) >= 0 )
   { struct stat buf;
 
-    if ( fstat(fd, &buf) == 0 )
+    if ( pl_rc_file_stat(fd, &buf) == 0 )
     { rca->map_size = buf.st_size;
       rca->size     = rca->map_size;
       rca->offset   = 0;
@@ -449,7 +449,7 @@ attach_archive(RcArchive rca)
 				  MAP_SHARED,
 				  fd,
 				  0)) != MAP_FAILED )
-      { close(fd);
+      { pl_rc_file_close(fd);
 	rca->data = rca->map_start;
 	return scan_archive(rca);
       }
@@ -518,10 +518,10 @@ errio:
 #endif /*HAVE_MMAP*/
 #else /*MAPPED_ARCHIVE*/
 					/* bottom line, use files */
-  if ( (rca->fd = fopen(rca->path, "rb")) )
+  if ( (rca->fd = pl_rc_file_open(rca->path, "rb")) )
   { struct stat buf;
 
-    if ( fstat(fileno(rca->fd), &buf) == 0 )
+    if ( pl_rc_file_stat(rca->fd, &buf) == 0 )
     { rca->size   = buf.st_size;
       rca->offset = 0;
     }
@@ -625,10 +625,10 @@ updateFilePtr(RcObject o)
   RcArchive rca = m->archive;
   rc_offset apos = o->offset + m->offset + rca->offset;
 
-  if ( ftell(rca->fd) == apos )
+  if ( pl_rc_file_tell(rca->fd) == apos )
     return 0;
 
-  if ( fseek(rca->fd, apos, SEEK_SET) != 0 )
+  if ( pl_rc_file_seek(rca->fd, apos, SEEK_SET) != 0 )
   { rc_errno = RCE_ERRNO;
     return -1;
   }
@@ -661,7 +661,7 @@ rc_read(RcObject o, void *buf, size_t bytes)
     if ( updateFilePtr(o) < 0 )
       return -1;
 
-    n = fread(buf, sizeof(char), bytes, rca->fd);
+    n = pl_rc_file_read(buf, sizeof(char), bytes, rca->fd);
     if ( n > 0 )
       o->offset += n;
     else if ( n < 0 )
@@ -731,7 +731,7 @@ rc_data(RcObject o, uintptr_t *size)
       o->offset = 0;			/* dubious */
       updateFilePtr(o);
 
-      if ( fread(m->data, sizeof(char), m->size, rca->fd) != m->size )
+      if ( pl_rc_file_read(m->data, sizeof(char), m->size, rca->fd) != m->size )
       { rc_errno = RCE_ERRNO;
 	free(m->data);
 	m->data = NULL;

@@ -52,6 +52,8 @@
 #include <process.h>
 #endif
 
+#include "pl-extern.h"
+
 int
 rc_append_file(RcArchive rca,
 	       const char *name, const char *rcclass, const char *enc,
@@ -117,9 +119,9 @@ rc_delete(RcArchive rca, const char *name, const char *class)
 #endif
 
 static int
-rc_save_data(RcMember m, FILE *fd)
+rc_save_data(RcMember m, ts_pl_rc_file *fd)
 { if ( m->file )
-  { int in = open(m->file, O_RDONLY|O_BINARY);
+  { ts_pl_rc_file * in = pl_rc_file_open(m->file, "r");
 
     if ( in >= 0 )
     { char buf[8192];
@@ -127,21 +129,21 @@ rc_save_data(RcMember m, FILE *fd)
       ssize_t n;
 
       while( size > 0 )
-      { if ( (n=read(in, buf, sizeof(buf))) > 0 )
-	{ if ( fwrite(buf, sizeof(char), n, fd) != n )
+      { if ( (n=pl_rc_file_read(in, buf, sizeof(buf))) > 0 )
+	{ if ( pl_rc_file_write(buf, sizeof(char), n, fd) != n )
 	  { rc_errno = RCE_ERRNO;
-	    close(in);
+	    pl_rc_file_close(in);
 	    return FALSE;
 	  }
 	  size -= n;
 	  continue;
 	}
 	rc_errno = (n == 0 ? RCE_SHORT : RCE_ERRNO);
-	close(in);
+	pl_rc_file_close(in);
 	return FALSE;
       }
 
-      close(in);
+      pl_rc_file_close(in);
     } else
     { rc_errno = RCE_ERRNO;
       return FALSE;
@@ -154,7 +156,7 @@ rc_save_data(RcMember m, FILE *fd)
 
     while( size > 0 )
     { if ( (n=rc_read(o, buf, sizeof(buf))) > 0 )
-      { if ( fwrite(buf, sizeof(char), n, fd) != n )
+      { if ( pl_rc_file_write(buf, sizeof(char), n, fd) != n )
 	{ rc_errno = RCE_ERRNO;
 	  rc_close(o);
 	  return FALSE;
@@ -175,17 +177,17 @@ rc_save_data(RcMember m, FILE *fd)
 
 
 static int
-rc_save_member(RcMember m, FILE *fd)
-{ fprintf(fd, "\n<file name=\"%s\" class=\"%s\" encoding=\"%s\" size=%ld",
+rc_save_member(RcMember m, ts_pl_rc_file *fd)
+{ pl_rc_file_printf(fd, "\n<file name=\"%s\" class=\"%s\" encoding=\"%s\" size=%ld",
 	  m->name, m->rc_class, m->encoding, (long)m->size);
   if ( m->modified )
-    fprintf(fd, " modified=%ld", (long)m->modified);
-  fprintf(fd, ">\n");
+    pl_rc_file_printf(fd, " modified=%ld", (long)m->modified);
+  pl_rc_file_printf(fd, ">\n");
 
   if ( !rc_save_data(m, fd) )
     return FALSE;
 
-  fprintf(fd, "\n</file>\n");
+  pl_rc_file_printf(fd, "\n</file>\n");
 
   return TRUE;
 }
@@ -193,7 +195,7 @@ rc_save_member(RcMember m, FILE *fd)
 
 int
 rc_save_archive(RcArchive rca, const char *to)
-{ FILE *fd;
+{ ts_pl_rc_file *fd;
   char tmp[200];
 
   sprintf(tmp, "__tmp%d.prc", (int)getpid());
@@ -201,7 +203,7 @@ rc_save_archive(RcArchive rca, const char *to)
   if ( to == NULL )
     to = rca->path;
 
-  if ( (fd=fopen(tmp, "wb")) )
+  if ( (fd=pl_rc_file_open(tmp, "wb")) )
   { RcMember member;
     rc_size size;
     RcMember hdr;
@@ -212,29 +214,29 @@ rc_save_archive(RcArchive rca, const char *to)
       hdrlen = hdr->size;
     }
 
-    fprintf(fd, "<archive>\n");
+    pl_rc_file_printf(fd, "<archive>\n");
     for( member = rca->members; member; member = member->next )
     { if ( strcmp(member->name, "$header") == 0 &&
 	   strcmp(member->rc_class, "$rc") == 0 )
 	continue;
 
       if ( !rc_save_member(member, fd) )
-      { fclose(fd);
+      { pl_rc_file_close(fd);
 	return FALSE;
       }
     }
-    fprintf(fd, "</archive>\n");
-    size = ftell(fd) - hdrlen;
-    fprintf(fd, "<foot contentlength=%ld>\n", (long)size);
-    if ( fclose(fd) == EOF )
+    pl_rc_file_printf(fd, "</archive>\n");
+    size = pl_rc_file_tell(fd) - hdrlen;
+    pl_rc_file_printf(fd, "<foot contentlength=%ld>\n", (long)size);
+    if ( pl_rc_file_close(fd) == EOF )
     { rc_errno = RCE_ERRNO;
       return FALSE;
     }
 
-    remove(to);
-    if ( rename(tmp, to) != 0 )
+    pl_rc_file_remove(to);
+    if ( pl_rc_file_rename(tmp, to) != 0 )
     { rc_errno = RCE_ERRNO;
-      remove(tmp);
+      pl_rc_file_remove(tmp);
       return FALSE;
     }
 

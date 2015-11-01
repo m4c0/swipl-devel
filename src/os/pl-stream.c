@@ -34,6 +34,8 @@
 #include <config.h>
 #endif
 
+#include "pl-extern.h"
+
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 This modules defines the  SWI-Prolog  I/O   streams.  These  streams are
 provided to gain common access to  any   type  of character data: files,
@@ -2690,18 +2692,6 @@ Sset_filter(IOSTREAM *parent, IOSTREAM *filter)
 		 *	    FILE STREAMS	*
 		 *******************************/
 
-typedef struct s_pl_rc_file ts_pl_rc_file;
-
-int rc_file_cntl(ts_pl_rc_file * fildes, int cmd, ...);
-int rc_file_close(ts_pl_rc_file * file);
-int rc_file_getc(ts_pl_rc_file * stream);
-ts_pl_rc_file * rc_file_open(const char * name, const char * mode);
-void rc_file_printf(ts_pl_rc_file * file, const char * fmt, ...);
-ssize_t rc_file_read(ts_pl_rc_file * fildes, void *buf, size_t nbyte);
-off_t rc_file_seek(ts_pl_rc_file * fildes, off_t offset, int whence);
-int rc_file_stat(ts_pl_rc_file * fildes, struct stat *buf);
-long rc_file_tell(ts_pl_rc_file * stream);
-size_t rc_file_write(const void *restrict ptr, size_t size, size_t nitems, ts_pl_rc_file *restrict stream);
 
 
 static ssize_t
@@ -2714,7 +2704,7 @@ Sread_file(void *handle, char *buf, size_t size)
 #ifdef __WINDOWS__
     bytes = read((int)h, buf, (int)size);
 #else
-    bytes = rc_file_read(h, buf, size);
+    bytes = pl_rc_file_read(h, buf, size);
 #endif
 
     if ( bytes == -1 && errno == EINTR )
@@ -2739,7 +2729,7 @@ Swrite_file(void *handle, char *buf, size_t size)
 #ifdef __WINDOWS__
   bytes = write((int)h, buf, (int)size);
 #else
-  bytes = rc_file_write(buf, 1, size, h);
+  bytes = pl_rc_file_write(buf, 1, size, h);
 #endif
 
   return bytes;
@@ -2751,7 +2741,7 @@ Sseek_file(void *handle, long pos, int whence)
 { ts_pl_rc_file * h = (ts_pl_rc_file *) handle;
 
 					/* cannot do EINTR according to man */
-  return rc_file_seek(h, pos, whence);
+  return pl_rc_file_seek(h, pos, whence);
 }
 
 
@@ -2761,7 +2751,7 @@ Sseek_file64(void *handle, int64_t pos, int whence)
 { ts_pl_rc_file * h = (ts_pl_rc_file *) handle;
 
 					/* cannot do EINTR according to man */
-  return rc_file_seek((int)h, pos, whence);
+  return pl_rc_file_seek((int)h, pos, whence);
 }
 #endif
 
@@ -2772,7 +2762,7 @@ Sclose_file(void *handle)
   int rc;
 
   do
-  { rc = rc_file_close(h);
+  { rc = pl_rc_file_close(h);
   } while ( rc == -1 && errno == EINTR );
 
   return rc;
@@ -2788,7 +2778,7 @@ Scontrol_file(void *handle, int action, void *arg)
     { int64_t *rval = arg;
       struct stat buf;
 
-      if ( rc_file_stat(fd, &buf) == 0 )
+      if ( pl_rc_file_stat(fd, &buf) == 0 )
       {	*rval = buf.st_size;
         return 0;
       }
@@ -3003,22 +2993,22 @@ Sopen_file(const char *path, const char *how)
 
   switch(op)
   { case 'w':
-      fd = rc_file_open(path, "w");
+      fd = pl_rc_file_open(path, "w");
       //fd = rc_file_open2(path, O_WRONLY|O_CREAT|O_TRUNC|oflags, mode);
       flags |= SIO_OUTPUT;
       break;
     case 'a':
-      fd = rc_file_open(path, "a");
+      fd = pl_rc_file_open(path, "a");
       //fd = rc_file_open2(path, O_WRONLY|O_CREAT|O_APPEND|oflags, mode);
       flags |= SIO_OUTPUT|SIO_APPEND;
       break;
     case 'u':
-      fd = rc_file_open(path, "a");
+      fd = pl_rc_file_open(path, "a");
       //fd = rc_file_open2(path, O_WRONLY|O_CREAT|oflags, mode);
       flags |= SIO_OUTPUT|SIO_UPDATE;
       break;
     case 'r':
-      fd = rc_file_open(path, "r");
+      fd = pl_rc_file_open(path, "r");
       //fd = rc_file_open2(path, O_RDONLY|oflags, 0);
       flags |= SIO_INPUT;
       break;
@@ -3041,17 +3031,17 @@ Sopen_file(const char *path, const char *how)
     buf.l_whence = SEEK_SET;
     buf.l_type   = (lock == lread ? F_RDLCK : F_WRLCK);
 
-    while( rc_file_cntl(fd, wait ? F_SETLKW : F_SETLK, &buf) != 0 )
+    while( pl_rc_file_cntl(fd, wait ? F_SETLKW : F_SETLK, &buf) != 0 )
     { if ( errno == EINTR )
       { if ( PL_handle_signals() < 0 )
-	{ rc_file_close(fd);
+	{ pl_rc_file_close(fd);
 	  return NULL;
 	}
 	continue;
       } else
       { int save = errno;
 
-	rc_file_close(fd);
+	pl_rc_file_close(fd);
 	errno = save;
 	return NULL;
       }
@@ -3072,12 +3062,12 @@ Sopen_file(const char *path, const char *how)
 		     0,
 		     0, 0xfffffff,
 		     &ov) )
-    { rc_file_close(fd);
+    { pl_rc_file_close(fd);
       errno = (wait ? EACCES : EAGAIN);	/* TBD: proper error */
       return NULL;
     }
 #else
-    rc_file_close(fd);
+    pl_rc_file_close(fd);
     errno = EINVAL;
     return NULL;
 #endif
