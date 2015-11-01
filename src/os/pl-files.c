@@ -40,8 +40,9 @@
 #ifdef O_XOS
 #define statstruct struct _stati64
 #else
+int rc_file_stat_path(const char * path, struct stat *restrict buf);
 #define statstruct struct stat
-#define statfunc stat
+#define statfunc rc_file_stat_path
 #endif
 
 #undef LD
