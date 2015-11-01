@@ -2690,9 +2690,23 @@ Sset_filter(IOSTREAM *parent, IOSTREAM *filter)
 		 *	    FILE STREAMS	*
 		 *******************************/
 
+typedef struct s_pl_rc_file ts_pl_rc_file;
+
+int rc_file_cntl(ts_pl_rc_file * fildes, int cmd, ...);
+int rc_file_close(ts_pl_rc_file * file);
+int rc_file_getc(ts_pl_rc_file * stream);
+ts_pl_rc_file * rc_file_open(const char * name, const char * mode);
+void rc_file_printf(ts_pl_rc_file * file, const char * fmt, ...);
+ssize_t rc_file_read(ts_pl_rc_file * fildes, void *buf, size_t nbyte);
+off_t rc_file_seek(ts_pl_rc_file * fildes, off_t offset, int whence);
+int rc_file_stat(ts_pl_rc_file * fildes, struct stat *buf);
+long rc_file_tell(ts_pl_rc_file * stream);
+size_t rc_file_write(const void *restrict ptr, size_t size, size_t nitems, ts_pl_rc_file *restrict stream);
+
+
 static ssize_t
 Sread_file(void *handle, char *buf, size_t size)
-{ intptr_t h = (intptr_t) handle;
+{ ts_pl_rc_file * h = (ts_pl_rc_file *) handle;
   ssize_t bytes;
 
   for(;;)
@@ -2700,7 +2714,7 @@ Sread_file(void *handle, char *buf, size_t size)
 #ifdef __WINDOWS__
     bytes = read((int)h, buf, (int)size);
 #else
-    bytes = read((int)h, buf, size);
+    bytes = rc_file_read(h, buf, size);
 #endif
 
     if ( bytes == -1 && errno == EINTR )
@@ -2719,13 +2733,13 @@ Sread_file(void *handle, char *buf, size_t size)
 
 static ssize_t
 Swrite_file(void *handle, char *buf, size_t size)
-{ intptr_t h = (intptr_t) handle;
+{ ts_pl_rc_file * h = (ts_pl_rc_file *) handle;
   ssize_t bytes;
 
 #ifdef __WINDOWS__
   bytes = write((int)h, buf, (int)size);
 #else
-  bytes = write((int)h, buf, size);
+  bytes = rc_file_write(buf, 1, size, h);
 #endif
 
   return bytes;
@@ -2734,31 +2748,31 @@ Swrite_file(void *handle, char *buf, size_t size)
 
 static long
 Sseek_file(void *handle, long pos, int whence)
-{ intptr_t h = (intptr_t) handle;
+{ ts_pl_rc_file * h = (ts_pl_rc_file *) handle;
 
 					/* cannot do EINTR according to man */
-  return lseek((int)h, pos, whence);
+  return rc_file_seek(h, pos, whence);
 }
 
 
 #ifdef O_LARGEFILES
 static int64_t
 Sseek_file64(void *handle, int64_t pos, int whence)
-{ intptr_t h = (intptr_t) handle;
+{ ts_pl_rc_file * h = (ts_pl_rc_file *) handle;
 
 					/* cannot do EINTR according to man */
-  return lseek((int)h, pos, whence);
+  return rc_file_seek((int)h, pos, whence);
 }
 #endif
 
 
 static int
 Sclose_file(void *handle)
-{ intptr_t h = (intptr_t) handle;
+{ ts_pl_rc_file * h = (ts_pl_rc_file *) handle;
   int rc;
 
   do
-  { rc = close((int) h);
+  { rc = rc_file_close(h);
   } while ( rc == -1 && errno == EINTR );
 
   return rc;
@@ -2767,15 +2781,14 @@ Sclose_file(void *handle)
 
 static int
 Scontrol_file(void *handle, int action, void *arg)
-{ intptr_t h = (intptr_t) handle;
-  int fd = (int)h;
+{ ts_pl_rc_file * fd = (ts_pl_rc_file *) handle;
 
   switch(action)
   { case SIO_GETSIZE:
     { int64_t *rval = arg;
       struct stat buf;
 
-      if ( fstat(fd, &buf) == 0 )
+      if ( rc_file_stat(fd, &buf) == 0 )
       {	*rval = buf.st_size;
         return 0;
       }
@@ -2785,7 +2798,7 @@ Scontrol_file(void *handle, int action, void *arg)
     case SIO_FLUSHOUTPUT:
       return 0;
     case SIO_GETFILENO:
-    { int *p = arg;
+    { ts_pl_rc_file **p = arg;
       *p = fd;
       return 0;
     }
@@ -2937,7 +2950,7 @@ CRLF_MAPPING is defined.
 
 IOSTREAM *
 Sopen_file(const char *path, const char *how)
-{ int fd;
+{ ts_pl_rc_file * fd;
   int oflags = O_BINARY;
   int flags = SIO_FILE|SIO_TEXT|SIO_RECORDPOS|SIO_FBUF;
   int op = *how++;
@@ -2990,19 +3003,23 @@ Sopen_file(const char *path, const char *how)
 
   switch(op)
   { case 'w':
-      fd = open(path, O_WRONLY|O_CREAT|O_TRUNC|oflags, mode);
+      fd = rc_file_open(path, "w");
+      //fd = rc_file_open2(path, O_WRONLY|O_CREAT|O_TRUNC|oflags, mode);
       flags |= SIO_OUTPUT;
       break;
     case 'a':
-      fd = open(path, O_WRONLY|O_CREAT|O_APPEND|oflags, mode);
+      fd = rc_file_open(path, "a");
+      //fd = rc_file_open2(path, O_WRONLY|O_CREAT|O_APPEND|oflags, mode);
       flags |= SIO_OUTPUT|SIO_APPEND;
       break;
     case 'u':
-      fd = open(path, O_WRONLY|O_CREAT|oflags, mode);
+      fd = rc_file_open(path, "a");
+      //fd = rc_file_open2(path, O_WRONLY|O_CREAT|oflags, mode);
       flags |= SIO_OUTPUT|SIO_UPDATE;
       break;
     case 'r':
-      fd = open(path, O_RDONLY|oflags);
+      fd = rc_file_open(path, "r");
+      //fd = rc_file_open2(path, O_RDONLY|oflags, 0);
       flags |= SIO_INPUT;
       break;
     default:
@@ -3012,7 +3029,7 @@ Sopen_file(const char *path, const char *how)
 
 
 
-  if ( fd < 0 )
+  if ( fd <= 0 )
     return NULL;
 
   if ( lock )
@@ -3024,17 +3041,17 @@ Sopen_file(const char *path, const char *how)
     buf.l_whence = SEEK_SET;
     buf.l_type   = (lock == lread ? F_RDLCK : F_WRLCK);
 
-    while( fcntl(fd, wait ? F_SETLKW : F_SETLK, &buf) != 0 )
+    while( rc_file_cntl(fd, wait ? F_SETLKW : F_SETLK, &buf) != 0 )
     { if ( errno == EINTR )
       { if ( PL_handle_signals() < 0 )
-	{ close(fd);
+	{ rc_file_close(fd);
 	  return NULL;
 	}
 	continue;
       } else
       { int save = errno;
 
-	close(fd);
+	rc_file_close(fd);
 	errno = save;
 	return NULL;
       }
@@ -3055,12 +3072,12 @@ Sopen_file(const char *path, const char *how)
 		     0,
 		     0, 0xfffffff,
 		     &ov) )
-    { close(fd);
+    { rc_file_close(fd);
       errno = (wait ? EACCES : EAGAIN);	/* TBD: proper error */
       return NULL;
     }
 #else
-    close(fd);
+    rc_file_close(fd);
     errno = EINVAL;
     return NULL;
 #endif

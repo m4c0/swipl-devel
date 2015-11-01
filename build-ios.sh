@@ -52,5 +52,5 @@ PLARCH="x86_64-apple-darwin"
 dobuild
 
 cd ../lib
-lipo -create -output libswipl.a */libswipl.a
+lipo -create -output libswipl.a {arm-apple-darwin,arm64-apple-darwin,x86_64-apple-darwin}/libswipl.a
 
