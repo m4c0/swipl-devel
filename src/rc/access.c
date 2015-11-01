@@ -436,14 +436,14 @@ attach_archive(RcArchive rca)
 #ifdef HAVE_MMAP
   ts_pl_rc_file * fd;
 
-  if ( (fd = pl_rc_file_open(rca->path, "r")) >= 0 )
+  if ( (fd = pl_rc_file_open(rca->path, "r")) != 0 )
   { struct stat buf;
 
     if ( pl_rc_file_stat(fd, &buf) == 0 )
     { rca->map_size = buf.st_size;
       rca->size     = rca->map_size;
       rca->offset   = 0;
-      if ( (rca->map_start = mmap(NULL,
+      if ( (rca->map_start = pl_rc_file_mmap(NULL,
 				  rca->size,
 				  PROT_READ,
 				  MAP_SHARED,
