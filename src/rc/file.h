@@ -22,14 +22,19 @@
 #undef getc
 #define getc rc_file_getc
 
+#undef rename
+#define rename rc_file_rename
+
 typedef struct s_pl_rc_file ts_pl_rc_file;
 
 int rc_file_close(ts_pl_rc_file * file);
 int rc_file_getc(ts_pl_rc_file * stream);
 ts_pl_rc_file * rc_file_open(const char * name, const char * mode);
 void rc_file_printf(ts_pl_rc_file * file, const char * fmt, ...);
+int rc_file_rename(const char *old, const char *new);
 long rc_file_tell(ts_pl_rc_file * stream);
 size_t rc_file_write(const void *restrict ptr, size_t size, size_t nitems, ts_pl_rc_file *restrict stream);
+
 
 #endif
 

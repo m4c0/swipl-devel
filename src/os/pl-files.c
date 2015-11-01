@@ -40,6 +40,7 @@
 #ifdef O_XOS
 #define statstruct struct _stati64
 #else
+int rc_file_access(const char *path, int amode);
 int rc_file_stat_path(const char * path, struct stat *restrict buf);
 #define statstruct struct stat
 #define statfunc rc_file_stat_path
@@ -188,7 +189,7 @@ int
 AccessFile(const char *path, int mode)
 { char tmp[MAXPATHLEN];
 #ifdef HAVE_ACCESS
-  return access(OsPath(path, tmp), access_mode(mode)) == 0 ? TRUE : FALSE;
+  return rc_file_access(OsPath(path, tmp), access_mode(mode)) == 0 ? TRUE : FALSE;
 #else
 #error "No implementation for AccessFile()"
 #endif
